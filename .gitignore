@@ -1,0 +1,20 @@
+﻿# Python cache
+__pycache__/
+*.py[cod]
+*.class
+.ipynb_checkpoints/
+
+# Ambientes virtuais
+.venv/
+venv/
+ENV/
+
+# Arquivo de credenciais (conforme orientacao no 02-guia-implementacao.md)
+.env
+
+# Logs
+*.log
+
+# Pastas temporarias / particoes
+parquet_partes/
+outputs/
