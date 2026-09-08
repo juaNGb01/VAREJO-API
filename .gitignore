@@ -18,3 +18,4 @@ ENV/
 # Pastas temporarias / particoes
 parquet_partes/
 outputs/
+"staging_data/" 
