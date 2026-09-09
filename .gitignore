@@ -1,4 +1,4 @@
-﻿# Python cache
+# Python cache
 __pycache__/
 *.py[cod]
 *.class
@@ -9,7 +9,7 @@ __pycache__/
 venv/
 ENV/
 
-# Arquivo de credenciais (conforme orientacao no 02-guia-implementacao.md)
+# Arquivo de credenciais
 .env
 
 # Logs
@@ -18,4 +18,9 @@ ENV/
 # Pastas temporarias / particoes
 parquet_partes/
 outputs/
-"staging_data/" 
+staging_data/
+
+# Banco DuckDB — gerado em tempo de execucao, nao versionado
+# Para recriar: execute os extractors em extractors/
+*.duckdb
+*.duckdb.wal
