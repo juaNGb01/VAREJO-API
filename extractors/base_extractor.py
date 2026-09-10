@@ -73,6 +73,9 @@ def fetch_all_pages(
                 timeout=timeout,
             )
             resp.raise_for_status()
+            
+            
+            
             data = resp.json()
             items = data.get("items", [])
             log.debug(

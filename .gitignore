@@ -14,11 +14,13 @@ ENV/
 
 # Logs
 *.log
+logs/
 
 # Pastas temporarias / particoes
 parquet_partes/
 outputs/
 staging_data/
+Database/VALESOL.duckdb
 
 # Banco DuckDB — gerado em tempo de execucao, nao versionado
 # Para recriar: execute os extractors em extractors/
