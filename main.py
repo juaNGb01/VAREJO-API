@@ -112,7 +112,6 @@ if __name__ == "__main__":
     if args.extrator:
         run_cli(args.extrator)
     else:
-        # Se puder inicializar Tkinter, inicia a GUI; caso contrario, mostra ajuda
         try:
             run_gui()
         except Exception as err:

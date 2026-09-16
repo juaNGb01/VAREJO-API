@@ -6,16 +6,16 @@ Extractor do endpoint /pessoa/fornecedores da API Varejo Facil.
 Fluxo:
   1. Le credenciais e caminhos padronizados do config.py
   2. Chama base_extractor.fetch_all_pages() -- dados ficam em memoria, sem JSON em disco
-  3. Converte para DataFrame pandas
-  4. Registra o DataFrame no DuckDB e aplica normalizacao de endereco
-  5. Grava tabela FORNECEDORES_V1 em Database/VALESOL.duckdb (CREATE OR REPLACE)
-  6. Valida e loga a contagem final
+  3. Converte para DataFrame pandas e normaliza os campos de endereco
+  4. Grava tabela FORNECEDORES_V1 em Database/VALESOL.duckdb (CREATE OR REPLACE)
+  5. Valida e loga a contagem final
 
 Executar:
     python extractors/extracao_fornecedores.py
     python -m extractors.extracao_fornecedores
 """
 
+import logging
 import sys
 import time
 from pathlib import Path
@@ -31,50 +31,39 @@ import pandas as pd
 from config import DB_PATH, HEADERS, URL_FORNECEDORES, setup_logger
 from extractors.base_extractor import fetch_all_pages
 
-# ──────────────────── Logging ────────────────────────────────
-log = setup_logger(__name__, "extracao_fornecedores.log")
+# ──────────────────── Logging Padronizado ────────────────────
+# Configura o logger raiz do pacote 'extractors' para evitar repeticao e unificar formatacao
+setup_logger("extractors", "extracao_fornecedores.log")
+log = logging.getLogger("extractors.extracao_fornecedores")
 
 # ──────────────────── Configuracao ───────────────────────────
 TABLE   = "FORNECEDORES_V1"
 COUNT   = 500   # maximo por request na API
-WORKERS = 4     # threads paralelas (dataset menor que clientes)
+WORKERS = 4     # threads paralelas
 
 
 def main():
     t_total = time.monotonic()
     log.info("=" * 60)
-    log.info("INICIO: extracao de FORNECEDORES")
+    log.info("INICIO: Extracao de FORNECEDORES")
     log.info("Endpoint : %s", URL_FORNECEDORES)
-    log.info("Banco    : %s", DB_PATH.resolve())
-    log.info("Tabela   : %s", TABLE)
+    log.info("Destino  : DuckDB (%s -> tabela %s)", DB_PATH.name, TABLE)
     log.info("=" * 60)
 
     if not URL_FORNECEDORES:
         log.error("URL_FORNECEDORES nao configurada no .env. Abortando.")
         return
 
-    # 1. Extrai todos os items direto da API (sem salvar JSON em disco)
+    # 1. Extrai todos os items direto da API via base_extractor
     items = fetch_all_pages(URL_FORNECEDORES, HEADERS, count=COUNT, workers=WORKERS)
 
     if not items:
         log.error("Nenhum dado retornado pela API. Abortando.")
         return
 
-    log.info("Items recebidos da API: %d", len(items))
-
-    # 2. Transforma em DataFrame normalizado via pandas (json_normalize).
-    #    Motivo: DuckDB nao consegue inferir STRUCT de colunas pandas object,
-    #    portanto o UNNEST via SQL em DataFrames registrados falha.
-    #
-    #    'endereco' em fornecedores e um struct unico (nao array), portanto
-    #    usamos json_normalize direto — sem explode.
+    # 2. Transforma em DataFrame e normaliza campos de endereco
     df_raw = pd.DataFrame(items)
-    log.info(
-        "DataFrame bruto: %d linhas x %d colunas",
-        len(df_raw), len(df_raw.columns),
-    )
 
-    # Normaliza os campos do endereco em colunas flat se a coluna existir
     if "endereco" in df_raw.columns:
         df_addr = pd.json_normalize(df_raw["endereco"].fillna({}).tolist())
         df_addr.index = df_raw.index
@@ -84,28 +73,28 @@ def main():
         df_final = df_raw
 
     log.info(
-        "DataFrame final (apos normalize de endereco): %d linhas x %d colunas",
+        "Normalizacao de endereco concluida: %d fornecedores (%d colunas)",
         len(df_final), len(df_final.columns),
     )
 
-    # 3. Conecta ao DuckDB e insere o DataFrame ja normalizado
+    # 3. Conecta ao DuckDB e grava a tabela
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(DB_PATH))
     con.register("df_final", df_final)
 
-    log.info("Criando tabela %s no DuckDB...", TABLE)
+    log.info("Gravando tabela %s no DuckDB...", TABLE)
     con.execute(f"CREATE OR REPLACE TABLE {TABLE} AS SELECT * FROM df_final")
 
-    # 4. Validacao
+    # 4. Validacao e resumo final
     total_db = con.execute(f"SELECT COUNT(*) FROM {TABLE}").fetchone()[0]
+    con.close()
+
     log.info("=" * 60)
     log.info(
-        "CONCLUIDO: %s | %d registros na tabela | %d itens da API",
-        TABLE, total_db, len(items),
+        "SUCESSO: %s gravada com %d registros no DuckDB (Tempo total: %.2fs)",
+        TABLE, total_db, time.monotonic() - t_total,
     )
-    log.info("Tempo total: %.1f s", time.monotonic() - t_total)
     log.info("=" * 60)
-    con.close()
 
 
 if __name__ == "__main__":

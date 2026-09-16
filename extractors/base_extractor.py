@@ -62,8 +62,10 @@ def fetch_all_pages(
         requests.HTTPError: Se a primeira request falhar (erro irrecuperavel).
     """
 
+
+    """Responsável pela busca de 1 pagina. Retorna (start, items) -- nunca lanca excecao."""
     def _fetch_page(start):
-        """Busca uma pagina especifica. Retorna (start, items) -- nunca lanca excecao."""
+        
         try:
             t0 = time.monotonic()
             resp = requests.get(
@@ -90,7 +92,7 @@ def fetch_all_pages(
             return start, []
 
     # ------------------------------------------------------------------ #
-    # Primeira request -- descobre o total de registros e traz o 1o lote  #
+    # Primeira request -- descobre o total de registros e traz o 1o lote #
     # ------------------------------------------------------------------ #
     log.info("Consultando endpoint: %s", url)
     t_inicio = time.monotonic()
@@ -101,9 +103,12 @@ def fetch_all_pages(
         params={"start": 0, "count": count},
         timeout=timeout,
     )
+    
+    
     resp0.raise_for_status()
     data0 = resp0.json()
 
+    #acessa o total de registros retornados pela api
     total = data0.get("total", 0)
     primeiros = data0.get("items", [])
 
@@ -118,13 +123,18 @@ def fetch_all_pages(
         log.warning("Endpoint nao retornou dados.")
         return []
 
+
+
     # ------------------------------------------------------------------ #
     # Calcula offsets restantes e faz download paralelo                   #
     # ------------------------------------------------------------------ #
+    
+    #como já foi buscado 1 lote passa a buscar apenas os restantes
     offsets_restantes = list(range(count, total, count))
 
     # Mapa offset -> items (garante ordem na montagem final)
     resultados = {0: primeiros}
+
 
     if offsets_restantes:
         log.info(
@@ -170,6 +180,7 @@ def fetch_all_pages(
         duracao,
     )
 
+    # retorna caso exista divergencia entre o total esperado e o total retornado
     if len(todos) != total:
         log.warning(
             "ATENCAO: divergencia de contagem -- coletados %d vs. esperados %d",
@@ -177,4 +188,5 @@ def fetch_all_pages(
             total,
         )
 
+    #retorna toda a lista com os valores
     return todos

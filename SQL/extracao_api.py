@@ -1,6 +1,7 @@
 """
 SQL/extracao_api.py
 -------------------
+Constantes de queries SQL usadas pelos extractors e notebooks.
 Constantes de queries SQL e helpers de conexao usados pelos extractors e notebooks.
 
 Apos a migracao para DuckDB centralizado (Database/VALESOL.duckdb),
@@ -8,6 +9,9 @@ as queries leem diretamente das tabelas persistentes — sem depender
 de arquivos JSON ou parquet em disco.
 
 Uso:
+    from SQL.extracao_api import QUERY_CLIENTE, QUERY_FORNECEDORES
+    con = duckdb.connect("Database/VALESOL.duckdb")
+    result = con.sql(QUERY_CLIENTE)
     from SQL.extracao_api import get_connection, QUERY_CLIENTE, QUERY_FORNECEDORES
     con = get_connection()
     result = con.sql(QUERY_CLIENTE).df()
@@ -35,8 +39,12 @@ def get_connection(read_only: bool = False) -> duckdb.DuckDBPyConnection:
 
 
 # ──────────────────────────────────────────────────────────────────────
+# CLIENTES
+# Tabela populada por: extractors/extracao_clientes.py
+# Uma linha por (cliente, endereco) — ja normalizada com UNNEST
 # QUERIES SQL PADRONIZADAS (carregadas dinamicamente de SQL/querys_extracao/)
 # ──────────────────────────────────────────────────────────────────────
+QUERY_CLIENTE = "SELECT * FROM CLIENTES_V1"
 try:
     QUERY_CLIENTE = load_sql_query("CLIENTES.SQL")
 except Exception:
@@ -47,6 +55,12 @@ try:
 except Exception:
     QUERY_FORNECEDORES = "SELECT * FROM FORNECEDORES_V1"
 
+# ──────────────────────────────────────────────────────────────────────
+# FORNECEDORES
+# Tabela populada por: extractors/extracao_fornecedores.py
+# Uma linha por fornecedor — endereco expandido como colunas flat
+# ──────────────────────────────────────────────────────────────────────
+QUERY_FORNECEDORES = "SELECT * FROM FORNECEDORES_V1"
 try:
     QUERY_PRODUTO = load_sql_query("PRODUTOS.SQL")
 except Exception:

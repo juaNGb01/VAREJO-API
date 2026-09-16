@@ -62,33 +62,39 @@ HEADERS = {
 # ──────────────────────────────────────────────────────────────────────────────
 # LOGGING PADRONIZADO
 # ──────────────────────────────────────────────────────────────────────────────
-def setup_logger(name: str, log_filename: str = "pipeline.log", level: int = logging.INFO) -> logging.Logger:
+def setup_logger(name: str = "extractors", log_filename: str = "pipeline.log", level: int = logging.INFO) -> logging.Logger:
     """
     Configura e retorna um logger padronizado com saida em console e arquivo.
     O arquivo e salvo de forma deterministica em LOGS_DIR com codificacao UTF-8.
-    Evita adicao duplicada de handlers se o logger ja tiver sido inicializado.
+    Desabilita propagate para evitar mensagens duplicadas no terminal.
     """
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    logger.propagate = False
 
-    if not logger.handlers:
-        formatter = logging.Formatter(
-            "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
+    # Limpa handlers existentes para evitar duplicacao caso chamado novamente
+    if logger.handlers:
+        for handler in list(logger.handlers):
+            handler.close()
+            logger.removeHandler(handler)
 
-        # Handler de arquivo na pasta logs/
-        log_filepath = LOGS_DIR / log_filename
-        file_handler = logging.FileHandler(log_filepath, encoding="utf-8")
-        file_handler.setLevel(level)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+    formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
-        # Handler do terminal / stdout
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(level)
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
+    # Handler de arquivo na pasta logs/
+    log_filepath = LOGS_DIR / log_filename
+    file_handler = logging.FileHandler(log_filepath, encoding="utf-8")
+    file_handler.setLevel(level)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # Handler do terminal / stdout
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(level)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
     return logger
 
